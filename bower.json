@@ -1,0 +1,17 @@
+{
+  "name": "backbone-sock-client",
+  "version": "0.0.1-alpha",
+  "main": "public/css/app.css",
+  "ignore": [
+    ".jshintrc",
+    "**/*.txt"
+  ],
+  "dependencies": {
+    "jquery": "2.1.1",
+    "underscore": "1.6.0",
+    "backbone":"1.1.2",
+    "bacon":"0.7.37"
+  },
+  "devDependencies": {
+  }
+}
