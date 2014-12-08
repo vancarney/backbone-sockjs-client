@@ -35,6 +35,9 @@ class WebSock.Client
         @trigger 'message', data
       @
     @connect() if connect? and connect
+  getClientId:->
+    return null unless @socket?.io?.engine?
+    @socket.io.engine.id
 class WebSock.SockModel extends Backbone.Model
   _t: null
   constructor:(attributes, options)->

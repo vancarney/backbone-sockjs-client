@@ -81,6 +81,14 @@ WebSock.Client = (function() {
     }
   }
 
+  Client.prototype.getClientId = function() {
+    var _ref, _ref1;
+    if (((_ref = this.socket) != null ? (_ref1 = _ref.io) != null ? _ref1.engine : void 0 : void 0) == null) {
+      return null;
+    }
+    return this.socket.io.engine.id;
+  };
+
   return Client;
 
 })();
