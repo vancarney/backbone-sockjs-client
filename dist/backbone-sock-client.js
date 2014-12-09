@@ -164,7 +164,6 @@ WebSock.SockData = (function(_super) {
         sntTime: Date.now()
       });
       m.body = mdl.attributes;
-      console.log("to: " + SockData.__connection__.socket.to);
       return SockData.__connection__.socket.emit('ws:datagram', m);
     }
   };
