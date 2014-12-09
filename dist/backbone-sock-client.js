@@ -160,11 +160,11 @@ WebSock.SockData = (function(_super) {
     var m;
     m = {};
     if (mtd === 'create') {
-      m.header = {
-        type: this.__type,
+      m.header = _.extend(this.header, {
         sntTime: Date.now()
-      };
+      });
       m.body = mdl.attributes;
+      console.log("to: " + SockData.__connection__.socket.to);
       return SockData.__connection__.socket.emit('ws:datagram', m);
     }
   };
