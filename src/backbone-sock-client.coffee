@@ -45,19 +45,19 @@ class WebSock.Client
         return "required part 'body' was not defined" unless o.body
         return "content size was invalid" unless JSON.stringify o.body is o.size
         return
-    @connect = =>
-      @socket  = io.connect "#{@__options.protocol}://#{@__options.host}:#{@__options.port}/".replace /\:+$/, ''
-      .on 'ws:datagram', (data)=>
-        data.header.rcvTime = Date.now()
-        (dM = new validationModel).set data
-        stream.add dM.attributes if dM.isValid() and (stream = @__streamHandlers[dM.attributes.header.type])?
-      .on 'connect', =>
-        WebSock.SockData.__connection__ = @
-        @trigger 'connected', @
-      .on 'disconnect', =>
-        @trigger 'disconnected'
-      @
     @connect() unless @__options.auto_connect? and @__options.auto_connect is false
+  connect:->
+    @socket  = io.connect "#{@__options.protocol}://#{@__options.host}:#{@__options.port}/".replace /\:+$/, ''
+    .on 'ws:datagram', (data)=>
+      data.header.rcvTime = Date.now()
+      (dM = new validationModel).set data
+      stream.add dM.attributes if dM.isValid() and (stream = @__streamHandlers[dM.attributes.header.type])?
+    .on 'connect', =>
+      WebSock.SockData.__connection__ = @
+      @trigger 'connected', @
+    .on 'disconnect', =>
+      @trigger 'disconnected'
+    @
   addStream:(name,clazz)->
     return throw "stream handler for #{name} is already set" if @__streamHandlers[name]?
     @__streamHandlers[name] = clazz

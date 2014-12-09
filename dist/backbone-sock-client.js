@@ -97,28 +97,33 @@ WebSock.Client = (function() {
         }
       }
     });
-    this.connect = (function(_this) {
-      return function() {
-        _this.socket = io.connect(("" + _this.__options.protocol + "://" + _this.__options.host + ":" + _this.__options.port + "/").replace(/\:+$/, '')).on('ws:datagram', function(data) {
-          var dM, stream;
-          data.header.rcvTime = Date.now();
-          (dM = new validationModel).set(data);
-          if (dM.isValid() && ((stream = _this.__streamHandlers[dM.attributes.header.type]) != null)) {
-            return stream.add(dM.attributes);
-          }
-        }).on('connect', function() {
-          WebSock.SockData.__connection__ = _this;
-          return _this.trigger('connected', _this);
-        }).on('disconnect', function() {
-          return _this.trigger('disconnected');
-        });
-        return _this;
-      };
-    })(this);
     if (!((this.__options.auto_connect != null) && this.__options.auto_connect === false)) {
       this.connect();
     }
   }
+
+  Client.prototype.connect = function() {
+    this.socket = io.connect(("" + this.__options.protocol + "://" + this.__options.host + ":" + this.__options.port + "/").replace(/\:+$/, '')).on('ws:datagram', (function(_this) {
+      return function(data) {
+        var dM, stream;
+        data.header.rcvTime = Date.now();
+        (dM = new validationModel).set(data);
+        if (dM.isValid() && ((stream = _this.__streamHandlers[dM.attributes.header.type]) != null)) {
+          return stream.add(dM.attributes);
+        }
+      };
+    })(this)).on('connect', (function(_this) {
+      return function() {
+        WebSock.SockData.__connection__ = _this;
+        return _this.trigger('connected', _this);
+      };
+    })(this)).on('disconnect', (function(_this) {
+      return function() {
+        return _this.trigger('disconnected');
+      };
+    })(this));
+    return this;
+  };
 
   Client.prototype.addStream = function(name, clazz) {
     if (this.__streamHandlers[name] != null) {
