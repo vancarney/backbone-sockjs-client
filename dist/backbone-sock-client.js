@@ -157,9 +157,12 @@ WebSock.SockData = (function(_super) {
   }
 
   SockData.prototype.sync = function(mtd, mdl, opt) {
-    var m;
+    var m, _base;
     m = {};
     if (mtd === 'create') {
+      if ((_base = this.header).type == null) {
+        _base.type = this.__type;
+      }
       m.header = _.extend(this.header, {
         sntTime: Date.now()
       });
@@ -215,9 +218,7 @@ WebSock.StreamCollection = (function(_super) {
   };
 
   StreamCollection.prototype.create = function(data) {
-    return StreamCollection.__super__.create.call(this, {
-      body: data
-    });
+    return StreamCollection.__super__.create.call(this, data);
   };
 
   StreamCollection.prototype.send = function(data) {

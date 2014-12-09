@@ -76,6 +76,8 @@ class WebSock.SockData extends Backbone.Model
     m = {}
     # Create-operations get routed to Socket.io
     if mtd == 'create'
+      # apply Class Name as type if not set by user
+      @header.type ?= @__type
       m.header  = _.extend @header, sntTime: Date.now()
       m.body    = mdl.attributes
       SockData.__connection__.socket.emit 'ws:datagram', m
@@ -101,7 +103,7 @@ class WebSock.StreamCollection extends Backbone.Collection
     # not implemented
     return false
   create:(data)->
-    StreamCollection.__super__.create.call @, body:data
+    StreamCollection.__super__.create.call @, data
   send:(data)->
     @create data
   initialize:->
