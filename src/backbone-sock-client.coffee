@@ -102,8 +102,17 @@ class WebSock.StreamCollection extends Backbone.Collection
   sync:()-> 
     # not implemented
     return false
-  create:(data)->
-    StreamCollection.__super__.create.call @, data
+  _prepareModel: (attrs,options)->
+    if attrs instanceof Backbone.Model
+      attrs.collection = @ unless attrs.collection
+      return attrs
+    options = if options then _.clone options else {}
+    options.collection = @
+    model = new @model attrs.body, options
+    model.header = Object.freeze attrs.header
+    return model unless model.validationError
+    @trigger 'invalid', @, model.validationError, options
+    false
   send:(data)->
     @create data
   initialize:->

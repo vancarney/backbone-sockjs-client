@@ -222,8 +222,23 @@ WebSock.StreamCollection = (function(_super) {
     return false;
   };
 
-  StreamCollection.prototype.create = function(data) {
-    return StreamCollection.__super__.create.call(this, data);
+  StreamCollection.prototype._prepareModel = function(attrs, options) {
+    var model;
+    if (attrs instanceof Backbone.Model) {
+      if (!attrs.collection) {
+        attrs.collection = this;
+      }
+      return attrs;
+    }
+    options = options ? _.clone(options) : {};
+    options.collection = this;
+    model = new this.model(attrs.body, options);
+    model.header = Object.freeze(attrs.header);
+    if (!model.validationError) {
+      return model;
+    }
+    this.trigger('invalid', this, model.validationError, options);
+    return false;
   };
 
   StreamCollection.prototype.send = function(data) {
