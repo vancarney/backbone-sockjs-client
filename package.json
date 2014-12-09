@@ -3,7 +3,6 @@
   "version": "0.0.1",
   "description": "Socket.io client for Backbone",
   "preferGlobal": false,
-  "main": "application",
   "repository": {
     "type": "git",
     "url": "git://github.com/vancarney/backbone-sock-client.git"
