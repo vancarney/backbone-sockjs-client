@@ -22,6 +22,8 @@ class WebSock.Client
     @__options.protocol  = opts.protocol || WebSock.PROTOCOL || 'http'
     @__options.host      = opts.host || WebSock.HOST || '0.0.0.0'
     @__options.port      = opts.port || WebSock.PORT || '3000'   
+    @connect() unless @__options.auto_connect? and @__options.auto_connect is false
+  connect:->
     validationModel = Backbone.Model.extend
       defaults:
         header:
@@ -45,8 +47,6 @@ class WebSock.Client
         return "required part 'body' was not defined" unless o.body
         return "content size was invalid" unless JSON.stringify o.body is o.size
         return
-    @connect() unless @__options.auto_connect? and @__options.auto_connect is false
-  connect:->
     @socket  = io.connect "#{@__options.protocol}://#{@__options.host}:#{@__options.port}/".replace /\:+$/, ''
     .on 'ws:datagram', (data)=>
       data.header.rcvTime = Date.now()

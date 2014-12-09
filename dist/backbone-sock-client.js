@@ -38,7 +38,6 @@ WebSock.Client = (function() {
   Client.prototype.__streamHandlers = {};
 
   function Client(opts) {
-    var validationModel;
     if (opts == null) {
       opts = {};
     }
@@ -47,6 +46,13 @@ WebSock.Client = (function() {
     this.__options.protocol = opts.protocol || WebSock.PROTOCOL || 'http';
     this.__options.host = opts.host || WebSock.HOST || '0.0.0.0';
     this.__options.port = opts.port || WebSock.PORT || '3000';
+    if (!((this.__options.auto_connect != null) && this.__options.auto_connect === false)) {
+      this.connect();
+    }
+  }
+
+  Client.prototype.connect = function() {
+    var validationModel;
     validationModel = Backbone.Model.extend({
       defaults: {
         header: {
@@ -97,12 +103,6 @@ WebSock.Client = (function() {
         }
       }
     });
-    if (!((this.__options.auto_connect != null) && this.__options.auto_connect === false)) {
-      this.connect();
-    }
-  }
-
-  Client.prototype.connect = function() {
     this.socket = io.connect(("" + this.__options.protocol + "://" + this.__options.host + ":" + this.__options.port + "/").replace(/\:+$/, '')).on('ws:datagram', (function(_this) {
       return function(data) {
         var dM, stream;
