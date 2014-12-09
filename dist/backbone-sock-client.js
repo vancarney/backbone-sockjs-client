@@ -243,7 +243,7 @@ if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) 
         return client.on('ws:datagram', function(data) {
           data.header.srvTime = Date.now();
           data.header.sender_id = client.id;
-          return (typeof data.header.send_to === 'undefined' ? io.sockets : io.to(data.header.send_to)).emit('ws:datagram', data);
+          return (typeof data.header.send_to === 'undefined' || data.header.send_to === null ? io.sockets : io.to(data.header.send_to)).emit('ws:datagram', data);
         });
       };
     })(this));

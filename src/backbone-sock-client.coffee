@@ -114,4 +114,4 @@ if module?.exports?.WebSock?
       client.on 'ws:datagram', (data)->
         data.header.srvTime   = Date.now()
         data.header.sender_id = client.id
-        (if typeof data.header.send_to is 'undefined' then io.sockets else io.to data.header.send_to).emit 'ws:datagram', data
+        (if typeof data.header.send_to is 'undefined' or data.header.send_to is null then io.sockets else io.to data.header.send_to).emit 'ws:datagram', data
