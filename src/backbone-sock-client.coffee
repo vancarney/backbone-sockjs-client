@@ -76,10 +76,9 @@ class WebSock.SockData extends Backbone.Model
     m = {}
     # Create-operations get routed to Socket.io
     if mtd == 'create'
-      m.header =
-        type:@__type
-        sntTime: Date.now()
-      m.body = mdl.attributes
+      m.header  = _.extend @header, sntTime: Date.now()
+      m.body    = mdl.attributes
+      console.log "to: #{SockData.__connection__.socket.to}"
       SockData.__connection__.socket.emit 'ws:datagram', m
   getSenderId:->
     @header.sender_id || null
