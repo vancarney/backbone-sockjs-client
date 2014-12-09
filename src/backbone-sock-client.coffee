@@ -1,6 +1,9 @@
 'use-strict'
 global = exports ? this
-global.Fun = {}
+# Includes Backbone & Underscore if the environment is NodeJS
+_         = (unless typeof exports is 'undefined' then require 'underscore' else global)._
+Backbone  = unless typeof exports is 'undefined' then require 'backbone' else global.Backbone
+Fun = global.Fun = {}
 #### getFunctionName(fun)
 # Attempts to safely determine name of a named function returns null if undefined
 Fun.getFunctionName = (fun)->
@@ -9,64 +12,106 @@ Fun.getFunctionName = (fun)->
 # Attempts to safely determine name of the Class Constructor returns null if undefined
 Fun.getConstructorName = (fun)->
   fun.constructor.name || if (name = @getFunctionName fun.constructor)? then name else null
-global.WebSock ?= CHAT_PROTO:'http', CHAT_ADDR:'0.0.0.0', CHAT_PORT:3000
+WebSock = global.WebSock ?= CHAT_PROTO:'http', CHAT_ADDR:'0.0.0.0', CHAT_PORT:3000
 class WebSock.Client
-  constructor:(connect = false)->
+  __options:{}
+  __streamHandlers:{}
+  constructor:(opts={})->
     _.extend @, Backbone.Events
     @model = WebSock.SockData
-    (@stream = new Bacon.Bus).filter( (message) -> !message.id ).onValue (message, params) =>
-      @socket.emit "#{(message.__type.replace /^([A-Z]{1,1})/, (s)->s.toLowerCase()).replace /[A-Z]{1}/g, (s)-> ' '+s.toLowerCase()}", message   
-    @messages = new WebSock.Messages
-    @send = (message)=>
-      msg = new WebSock.Message body:message
-      .save 
-        success:=> 
-          @model.add msg
+    @__options.protocol  = opts.protocol || WebSock.PROTOCOL || 'http'
+    @__options.host      = opts.host || WebSock.HOST || '0.0.0.0'
+    @__options.port      = opts.port || WebSock.PORT || '3000'   
+    validationModel = Backbone.Model.extend
+      defaults:
+        header:
+          sender_id: String
+          type: String
+          sntTime: Date
+          srvTime: Date
+          rcvTime: Date
+          size: Number
+        body:null
+      validate:(o)->
+        o ?= @attributes
+        return "required part 'header' was not defined" unless o.header?
+        for key in @defaults.header
+          return "required header #{key} was not defined" unless o.header[key]?
+        return "wrong value for sender_id header" unless typeof o.header.sender_id is 'string'
+        return "wrong value for type header" unless typeof o.header.type is 'string'
+        return "wrong value for sntTime header" unless (new Date o.header.sntTime).getTime() is o.header.sntTime
+        return "wrong value for srvTime header" unless (new Date o.header.srvTime).getTime() is o.header.srvTime
+        return "wrong value for rcvTime header" unless (new Date o.header.rcvTime).getTime() is o.header.rcvTime
+        return "required part 'body' was not defined" unless o.body
+        return "content size was invalid" unless JSON.stringify o.body is o.size
+        return
     @connect = =>
-      @socket  = io.connect "#{WebSock.CHAT_PROTO}://#{WebSock.CHAT_ADDR}:#{WebSock.CHAT_PORT}/".replace /\:+$/, ''
-      .on 'message', (data)=>
-        @messages.add new @model data
+      @socket  = io.connect "#{@__options.protocol}://#{@__options.host}:#{@__options.port}/".replace /\:+$/, ''
+      .on 'ws:datagram', (data)=>
+        data.header.rcvTime = Date.now()
+        (dM = new validationModel).set data
+        stream.add dM.attributes if dM.isValid() and (stream = @__streamHandlers[dM.attributes.header.type])?
       .on 'connect', =>
-        WebSock.SockModel.__connection__ = @
+        WebSock.SockData.__connection__ = @
         @trigger 'connected', @
       .on 'disconnect', =>
         @trigger 'disconnected'
-      .on 'message', (data)=> 
-        @trigger 'message', data
       @
-    @connect() if connect? and connect
+    @connect() unless @__options.auto_connect? and @__options.auto_connect is false
+  addStream:(name,clazz)->
+    return throw "stream handler for #{name} is already set" if @__streamHandlers[name]?
+    @__streamHandlers[name] = clazz
+  removeStream:(name)->
+    return throw "no stream handler for #{name} is defined" unless @__streamHandlers[name]?
+    delete @__streamHandlers[name]
   getClientId:->
     return null unless @socket?.io?.engine?
     @socket.io.engine.id
-class WebSock.SockModel extends Backbone.Model
-  _t: null
+class WebSock.SockData extends Backbone.Model
+  header:{}
   constructor:(attributes, options)->
     super attributes, options
-    @__type = Fun.getConstructorName( this )
+    @__type = Fun.getConstructorName @
   sync: (mtd, mdl, opt) ->
+    m = {}
     # Create-operations get routed to Socket.io
     if mtd == 'create'
-      mdl.attributes = _.extend mdl.attributes, __type : @__type
-      SockModel.__connection__.stream.push mdl.toJSON()
-class WebSock.Message extends WebSock.SockModel
-  defaults:
-    body:""
-class WebSock.SockData extends Backbone.Model
-  models:
-    message:WebSock.Message
-  defaults:
-    ts: new Date().getTime()
-    tz_offset:  new Date().getTimezoneOffset()
-  parse: (response)->
-    _.each @models, (v,k)=>
-      embeddedClass = @models[key]
-      embeddedData  = response[key]
-      response[key] = new embeddedClass embeddedData, parse:true if embeddedClass?
-class WebSock.Messages extends Backbone.Collection
+      m.header =
+        type:@__type
+        sntTime: Date.now()
+      m.body = mdl.attributes
+      SockData.__connection__.socket.emit 'ws:datagram', m
+  getSenderId:->
+    @header.sender_id || null
+  getSentTime:->
+    @header.sntTime || null
+  getServedTime:->
+    @header.srvTime || null
+  getRecievedTime:->
+    @header.rcvTime || null
+  getSize:->
+    @header.size || null
+  parse: (data)->
+    @header = Object.freeze data.header
+    SockData.__super__.parse.call data.body
+class WebSock.StreamCollection extends Backbone.Collection
   model:WebSock.SockData
-  messageFilter:(message)-> 
-    true
-  consume: (@stream) ->
-    @stream.onValue (message) =>
-      @add message
-      Bacon.more
+  fetch:->
+    # not implemented
+    return false
+  sync:()-> 
+    # not implemented
+    return false
+  create:(data)->
+    StreamCollection.__super__.create.call @, body:data
+  send:(data)->
+    @create data
+  initialize:->
+    _client = arguments[0] if arguments[0] instanceof WebSock.Client
+if module?.exports?.WebSock?
+  module.exports.init = (io)->
+    io.sockets.on 'connect', (client)=>
+      client.on 'ws:datagram', (data)->
+        data.header.srvTime   = Date.now()
+        data.header.sender_id = client.id
+        (if typeof data.header.send_to is 'undefined' then io.sockets else io.to data.header.send_to).emit 'ws:datagram', data

@@ -39,7 +39,6 @@
 		<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
 		<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.7.0/underscore-min.js"></script>
 		<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js"></script>
-		<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/bacon.js/0.7.37/Bacon.min.js"></script>
 		<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/foundation/5.4.7/js/foundation.min.js"></script>
 		<script type="text/javascript" src="socket.io/socket.io.js"></script>
 		<script type="text/javascript" src="backbone-sock-client.js"></script>
@@ -48,19 +47,22 @@
 			$(document).ready(function() {
 				window.client = (new WebSock.Client)
 				.on( 'connected', function(evt) {
-					console.log('connected');
+					stream = new WebSock.StreamCollection;
+					stream.on('add', function() {
+						console.log(arguments);
+					});
+					client.addStream('memo',stream);
 					$('.button').removeClass('disabled').on('click', function(evt) {
 						var memo;
 						if ((memo = $('input[name=memo]').val()) == null || !memo.length) return;
-						client.send( memo );
+						stream.send( {text:memo} );
 						$('input[name=memo]').val('');
 					});
 				})
 				.on( 'disconnected', function(evt) {
 					console.log('disconnected');
 					$('.button').addClass('disabled').off('click');
-				})
-				.connect();
+				});
 			}).foundation();
 		</script>
 	</body>

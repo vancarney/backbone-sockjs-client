@@ -9,8 +9,7 @@
   "dependencies": {
     "jquery": "2.1.1",
     "underscore": "1.6.0",
-    "backbone":"1.1.2",
-    "bacon":"0.7.37"
+    "backbone":"1.1.2"
   },
   "devDependencies": {
   }

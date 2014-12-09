@@ -9,7 +9,9 @@
     "url": "git://github.com/vancarney/backbone-sock-client.git"
   },
   "dependencies": {
-  	"socket.io":">=1.2.1"
+  	"socket.io":">=1.2.1",
+  	"underscore":">=1.7.0",
+  	"backbone":"1.1.2"
   },
   "devDependencies": {
   	"express":">=4.10.4",

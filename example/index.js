@@ -6,19 +6,8 @@ var app = express(),
 host = process.env.HOST || '0.0.0.0',
 port = process.env.PORT || 3000,
 server = require('http').createServer(app),
-io = require('socket.io').listen(server);             // socket needs to listen on http server
-
-
-io.sockets.on('connection', function(client) {
-	console.log('user connected');
-    client.on('message', function(data) {
-    	// broadcast to clients
-    	console.log(data);
-        return io.sockets.emit('message', data);
-     })
-     .emit('HELO', new Date());
-});
-
+websock = require('../dist/backbone-sock-client');
+websock.init( require('socket.io').listen( server ) );
 
 server.listen(port);
 
