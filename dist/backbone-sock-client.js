@@ -163,7 +163,13 @@ WebSock.SockData = (function(_super) {
 
   SockData.prototype.sync = function(mtd, mdl, opt) {
     var m, _base;
+    if (opt == null) {
+      opt = {};
+    }
     m = {};
+    if (opt.header != null) {
+      _.extend(this.header(opt.header));
+    }
     if (mtd === 'create') {
       if ((_base = this.header).type == null) {
         _base.type = this.__type;
@@ -196,6 +202,14 @@ WebSock.SockData = (function(_super) {
     return this.header.size || null;
   };
 
+  SockData.prototype.setRoomId = function(id) {
+    return this.header.room_id = id;
+  };
+
+  SockData.prototype.getRoomId = function() {
+    return this.header.room_id;
+  };
+
   SockData.prototype.parse = function(data) {
     this.header = Object.freeze(data.header);
     return SockData.__super__.parse.call(data.body);
@@ -204,6 +218,99 @@ WebSock.SockData = (function(_super) {
   return SockData;
 
 })(Backbone.Model);
+
+WebSock.Message = (function(_super) {
+  __extends(Message, _super);
+
+  function Message() {
+    return Message.__super__.constructor.apply(this, arguments);
+  }
+
+  Message.prototype.defaults = {
+    text: ""
+  };
+
+  return Message;
+
+})(WebSock.SockData);
+
+WebSock.RoomMessage = (function(_super) {
+  __extends(RoomMessage, _super);
+
+  function RoomMessage() {
+    return RoomMessage.__super__.constructor.apply(this, arguments);
+  }
+
+  RoomMessage.prototype.defaults = {
+    text: ""
+  };
+
+  RoomMessage.prototype.initialize = function(attrs, options) {
+    if (options == null) {
+      options = {};
+    }
+    if (options.room_id != null) {
+      return this.header.room_id = options.room_id;
+    }
+  };
+
+  return RoomMessage;
+
+})(WebSock.SockData);
+
+WebSock.JoinRoom = (function(_super) {
+  __extends(JoinRoom, _super);
+
+  function JoinRoom() {
+    return JoinRoom.__super__.constructor.apply(this, arguments);
+  }
+
+  JoinRoom.prototype.defaults = {
+    room_id: null,
+    status: "pending"
+  };
+
+  JoinRoom.prototype.set = function(attrs, opts) {
+    if (attrs.room_id != null) {
+      this.header.room_id = attrs.room_id;
+    }
+    return JoinRoom.__super__.set.call(this, attrs, opts);
+  };
+
+  JoinRoom.prototype.sync = function(mtd, mdl, opts) {
+    delete mdl.body;
+    return JoinRoom.__super__.sync.call(this, mtd, mdl, opts);
+  };
+
+  JoinRoom.prototype.validate = function(o) {
+    if (!((o.room_id != null) || this.attributes.room_id)) {
+      return "parameter 'room_id' must be set";
+    }
+  };
+
+  JoinRoom.prototype.initialize = function(attrs, options) {
+    if (options == null) {
+      options = {};
+    }
+    if (options.room_id != null) {
+      return this.header.room_id = options.room_id;
+    }
+  };
+
+  return JoinRoom;
+
+})(WebSock.SockData);
+
+WebSock.LeaveRoom = (function(_super) {
+  __extends(LeaveRoom, _super);
+
+  function LeaveRoom() {
+    return LeaveRoom.__super__.constructor.apply(this, arguments);
+  }
+
+  return LeaveRoom;
+
+})(WebSock.JoinRoom);
 
 WebSock.StreamCollection = (function(_super) {
   __extends(StreamCollection, _super);
@@ -263,7 +370,25 @@ if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) 
         return client.on('ws:datagram', function(data) {
           data.header.srvTime = Date.now();
           data.header.sender_id = client.id;
-          return (typeof data.header.send_to === 'undefined' || data.header.send_to === null ? io.sockets : io.to(data.header.send_to)).emit('ws:datagram', data);
+          if (data.header.type === 'JoinRoom') {
+            if (data.body.room_id) {
+              client.join(data.body.room_id);
+              data.body = {
+                status: "success"
+              };
+              client.emit('ws:datagram', data);
+            }
+            return;
+          }
+          if (data.header.type === 'LeaveRoom') {
+            client.leave(data.header.room_id);
+            data.body = {
+              status: "success"
+            };
+            client.emit('ws:datagram', data);
+            return;
+          }
+          return (typeof data.header.room_id === 'undefined' || data.header.room_id === null ? io.sockets : io.to(data.header.room_id)).emit('ws:datagram', data);
         });
       };
     })(this));

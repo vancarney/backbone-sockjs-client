@@ -72,8 +72,9 @@ class WebSock.SockData extends Backbone.Model
   constructor:(attributes, options)->
     super attributes, options
     @__type = Fun.getConstructorName @
-  sync: (mtd, mdl, opt) ->
+  sync: (mtd, mdl, opt={}) ->
     m = {}
+    _.extend @header opt.header if opt.header?
     # Create-operations get routed to Socket.io
     if mtd == 'create'
       # apply Class Name as type if not set by user
@@ -91,9 +92,37 @@ class WebSock.SockData extends Backbone.Model
     @header.rcvTime || null
   getSize:->
     @header.size || null
+  setRoomId:(id)->
+    @header.room_id = id
+  getRoomId:->
+    @header.room_id
   parse: (data)->
     @header = Object.freeze data.header
     SockData.__super__.parse.call data.body
+class WebSock.Message extends WebSock.SockData
+  defaults:
+    text:""
+class WebSock.RoomMessage extends WebSock.SockData
+  defaults:
+    text:""
+  initialize:(attrs,options={})->
+    @header.room_id = options.room_id if options.room_id?
+class WebSock.JoinRoom extends WebSock.SockData
+  defaults:
+    room_id:null
+    status:"pending"
+  set:(attrs,opts)->
+    if attrs.room_id?
+      @header.room_id = attrs.room_id
+    JoinRoom.__super__.set.call @, attrs, opts
+  sync:(mtd,mdl,opts)->
+    delete mdl.body
+    JoinRoom.__super__.sync.call @, mtd, mdl, opts
+  validate:(o)->
+    return "parameter 'room_id' must be set" unless o.room_id? or @attributes.room_id
+  initialize:(attrs,options={})->
+    @header.room_id = options.room_id if options.room_id?
+class WebSock.LeaveRoom extends WebSock.JoinRoom
 class WebSock.StreamCollection extends Backbone.Collection
   model:WebSock.SockData
   fetch:->
@@ -123,4 +152,15 @@ if module?.exports?.WebSock?
       client.on 'ws:datagram', (data)->
         data.header.srvTime   = Date.now()
         data.header.sender_id = client.id
-        (if typeof data.header.send_to is 'undefined' or data.header.send_to is null then io.sockets else io.to data.header.send_to).emit 'ws:datagram', data
+        if data.header.type is 'JoinRoom'
+          if data.body.room_id
+            client.join data.body.room_id
+            data.body = status:"success"
+            client.emit 'ws:datagram', data
+          return
+        if data.header.type is 'LeaveRoom'
+          client.leave data.header.room_id
+          data.body = status:"success"
+          client.emit 'ws:datagram', data
+          return
+        (if typeof data.header.room_id is 'undefined' or data.header.room_id is null then io.sockets else io.in data.header.room_id).emit 'ws:datagram', data
