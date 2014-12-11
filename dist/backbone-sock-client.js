@@ -388,7 +388,7 @@ if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) 
             client.emit('ws:datagram', data);
             return;
           }
-          return (typeof data.header.room_id === 'undefined' || data.header.room_id === null ? io.sockets : io.to(data.header.room_id)).emit('ws:datagram', data);
+          return (typeof data.header.room_id === 'undefined' || data.header.room_id === null ? io.sockets : io["in"](data.header.room_id)).emit('ws:datagram', data);
         });
       };
     })(this));
