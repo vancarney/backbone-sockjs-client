@@ -155,12 +155,12 @@ if module?.exports?.WebSock?
         if data.header.type is 'JoinRoom'
           if data.body.room_id
             client.join data.body.room_id
-            data.body = status:"success"
+            data.body.status = 'success'
             client.emit 'ws:datagram', data
           return
         if data.header.type is 'LeaveRoom'
           client.leave data.header.room_id
-          data.body = status:"success"
+          data.body.status = 'success'
           client.emit 'ws:datagram', data
           return
         (if typeof data.header.room_id is 'undefined' or data.header.room_id is null then io.sockets else io.in data.header.room_id).emit 'ws:datagram', data

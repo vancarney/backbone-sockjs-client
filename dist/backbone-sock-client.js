@@ -373,18 +373,14 @@ if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) 
           if (data.header.type === 'JoinRoom') {
             if (data.body.room_id) {
               client.join(data.body.room_id);
-              data.body = {
-                status: "success"
-              };
+              data.body.status = 'success';
               client.emit('ws:datagram', data);
             }
             return;
           }
           if (data.header.type === 'LeaveRoom') {
             client.leave(data.header.room_id);
-            data.body = {
-              status: "success"
-            };
+            data.body.status = 'success';
             client.emit('ws:datagram', data);
             return;
           }
