@@ -59,10 +59,10 @@ class WebSock.Client
       @trigger 'disconnected'
     @
   addStream:(name,clazz)->
-    return throw "stream handler for #{name} is already set" if @__streamHandlers[name]?
+    return s if (s = @__streamHandlers[name])?
     @__streamHandlers[name] = clazz
   removeStream:(name)->
-    return throw "no stream handler for #{name} is defined" unless @__streamHandlers[name]?
+    return null unless @__streamHandlers[name]?
     delete @__streamHandlers[name]
   getClientId:->
     return null unless @socket?.io?.engine?
@@ -107,6 +107,13 @@ class WebSock.RoomMessage extends WebSock.SockData
     text:""
   initialize:(attrs,options={})->
     @header.room_id = options.room_id if options.room_id?
+class WebSock.CreateRoom extends WebSock.SockData
+  defaults:
+    room_id:null
+    status:"pending"
+class WebSock.ListRooms extends WebSock.SockData
+  defaults:
+    rooms:[]
 class WebSock.JoinRoom extends WebSock.SockData
   defaults:
     room_id:null
@@ -152,6 +159,17 @@ if module?.exports?.WebSock?
       client.on 'ws:datagram', (data)->
         data.header.srvTime   = Date.now()
         data.header.sender_id = client.id
+        if data.header.type is 'ListRooms'
+          data.body.status = 'success'
+          data.body.rooms = _.keys io.sockets.adapter.rooms
+          client.emit 'ws:datagram', data
+        if data.header.type is 'CreateRoom'
+          unless 0 <= (_.keys io.sockets.adapter.rooms).indexOf data.body.room_id
+            data.body.status = 'success'
+            client.join data.body.room_id
+          else
+            data.body.status = 'error'
+          client.emit 'ws:datagram', data 
         if data.header.type is 'JoinRoom'
           if data.body.room_id
             client.join data.body.room_id
@@ -163,4 +181,5 @@ if module?.exports?.WebSock?
           data.body.status = 'success'
           client.emit 'ws:datagram', data
           return
+        console.log data
         (if typeof data.header.room_id is 'undefined' or data.header.room_id is null then io.sockets else io.in data.header.room_id).emit 'ws:datagram', data

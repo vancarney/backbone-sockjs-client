@@ -126,15 +126,16 @@ WebSock.Client = (function() {
   };
 
   Client.prototype.addStream = function(name, clazz) {
-    if (this.__streamHandlers[name] != null) {
-      throw "stream handler for " + name + " is already set";
+    var s;
+    if ((s = this.__streamHandlers[name]) != null) {
+      return s;
     }
     return this.__streamHandlers[name] = clazz;
   };
 
   Client.prototype.removeStream = function(name) {
     if (this.__streamHandlers[name] == null) {
-      throw "no stream handler for " + name + " is defined";
+      return null;
     }
     return delete this.__streamHandlers[name];
   };
@@ -258,6 +259,37 @@ WebSock.RoomMessage = (function(_super) {
 
 })(WebSock.SockData);
 
+WebSock.CreateRoom = (function(_super) {
+  __extends(CreateRoom, _super);
+
+  function CreateRoom() {
+    return CreateRoom.__super__.constructor.apply(this, arguments);
+  }
+
+  CreateRoom.prototype.defaults = {
+    room_id: null,
+    status: "pending"
+  };
+
+  return CreateRoom;
+
+})(WebSock.SockData);
+
+WebSock.ListRooms = (function(_super) {
+  __extends(ListRooms, _super);
+
+  function ListRooms() {
+    return ListRooms.__super__.constructor.apply(this, arguments);
+  }
+
+  ListRooms.prototype.defaults = {
+    rooms: []
+  };
+
+  return ListRooms;
+
+})(WebSock.SockData);
+
 WebSock.JoinRoom = (function(_super) {
   __extends(JoinRoom, _super);
 
@@ -370,6 +402,20 @@ if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) 
         return client.on('ws:datagram', function(data) {
           data.header.srvTime = Date.now();
           data.header.sender_id = client.id;
+          if (data.header.type === 'ListRooms') {
+            data.body.status = 'success';
+            data.body.rooms = _.keys(io.sockets.adapter.rooms);
+            client.emit('ws:datagram', data);
+          }
+          if (data.header.type === 'CreateRoom') {
+            if (!(0 <= (_.keys(io.sockets.adapter.rooms)).indexOf(data.body.room_id))) {
+              data.body.status = 'success';
+              client.join(data.body.room_id);
+            } else {
+              data.body.status = 'error';
+            }
+            client.emit('ws:datagram', data);
+          }
           if (data.header.type === 'JoinRoom') {
             if (data.body.room_id) {
               client.join(data.body.room_id);
@@ -384,6 +430,7 @@ if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) 
             client.emit('ws:datagram', data);
             return;
           }
+          console.log(data);
           return (typeof data.header.room_id === 'undefined' || data.header.room_id === null ? io.sockets : io["in"](data.header.room_id)).emit('ws:datagram', data);
         });
       };
