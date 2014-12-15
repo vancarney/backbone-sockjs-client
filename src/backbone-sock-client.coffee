@@ -69,9 +69,9 @@ class WebSock.Client
     @socket.io.engine.id
 class WebSock.SockData extends Backbone.Model
   header:{}
-  constructor:(attributes, options)->
-    super attributes, options
+  initialize:(attributes, options)->
     @__type = Fun.getConstructorName @
+    SockData.__super__.initialize.call @, attributes, options
   sync: (mtd, mdl, opt={}) ->
     m = {}
     _.extend @header opt.header if opt.header?
@@ -163,13 +163,15 @@ if module?.exports?.WebSock?
           data.body.status = 'success'
           data.body.rooms = _.keys io.sockets.adapter.rooms
           client.emit 'ws:datagram', data
+          return
         if data.header.type is 'CreateRoom'
           unless 0 <= (_.keys io.sockets.adapter.rooms).indexOf data.body.room_id
             data.body.status = 'success'
             client.join data.body.room_id
           else
             data.body.status = 'error'
-          client.emit 'ws:datagram', data 
+          client.emit 'ws:datagram', data
+          return
         if data.header.type is 'JoinRoom'
           if data.body.room_id
             client.join data.body.room_id

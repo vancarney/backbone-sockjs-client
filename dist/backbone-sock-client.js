@@ -155,12 +155,16 @@ WebSock.Client = (function() {
 WebSock.SockData = (function(_super) {
   __extends(SockData, _super);
 
+  function SockData() {
+    return SockData.__super__.constructor.apply(this, arguments);
+  }
+
   SockData.prototype.header = {};
 
-  function SockData(attributes, options) {
-    SockData.__super__.constructor.call(this, attributes, options);
+  SockData.prototype.initialize = function(attributes, options) {
     this.__type = Fun.getConstructorName(this);
-  }
+    return SockData.__super__.initialize.call(this, attributes, options);
+  };
 
   SockData.prototype.sync = function(mtd, mdl, opt) {
     var m, _base;
@@ -406,6 +410,7 @@ if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) 
             data.body.status = 'success';
             data.body.rooms = _.keys(io.sockets.adapter.rooms);
             client.emit('ws:datagram', data);
+            return;
           }
           if (data.header.type === 'CreateRoom') {
             if (!(0 <= (_.keys(io.sockets.adapter.rooms)).indexOf(data.body.room_id))) {
@@ -415,6 +420,7 @@ if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) 
               data.body.status = 'error';
             }
             client.emit('ws:datagram', data);
+            return;
           }
           if (data.header.type === 'JoinRoom') {
             if (data.body.room_id) {
