@@ -182,7 +182,6 @@ if module?.exports?.WebSock?
         if data.header.type is 'CreateRoom'
           unless 0 <= (_.keys io.sockets.adapter.rooms).indexOf data.body.room_id
             data.body.status = 'success'
-            console.log('CreateRoom');
             client.join data.body.room_id
           else
             data.body.status = 'error'

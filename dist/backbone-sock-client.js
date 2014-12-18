@@ -441,7 +441,6 @@ if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) 
           if (data.header.type === 'CreateRoom') {
             if (!(0 <= (_.keys(io.sockets.adapter.rooms)).indexOf(data.body.room_id))) {
               data.body.status = 'success';
-              console.log('CreateRoom');
               client.join(data.body.room_id);
             } else {
               data.body.status = 'error';
