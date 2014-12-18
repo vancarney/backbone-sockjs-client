@@ -12,16 +12,12 @@ Fun.getFunctionName = (fun)->
 # Attempts to safely determine name of the Class Constructor returns null if undefined
 Fun.getConstructorName = (fun)->
   fun.constructor.name || if (name = @getFunctionName fun.constructor)? then name else null
-WebSock = global.WebSock ?= CHAT_PROTO:'http', CHAT_ADDR:'0.0.0.0', CHAT_PORT:3000
+WebSock = global.WebSock ?= {}
 class WebSock.Client
-  __options:{}
   __streamHandlers:{}
-  constructor:(opts={})->
+  constructor:(@__addr, @__options={})->
     _.extend @, Backbone.Events
-    @model = WebSock.SockData
-    @__options.protocol  = opts.protocol || WebSock.PROTOCOL || 'http'
-    @__options.host      = opts.host || WebSock.HOST || '0.0.0.0'
-    @__options.port      = opts.port || WebSock.PORT || '3000'   
+    @model = WebSock.SockData 
     @connect() unless @__options.auto_connect? and @__options.auto_connect is false
   connect:->
     validationModel = Backbone.Model.extend
@@ -47,16 +43,35 @@ class WebSock.Client
         return "required part 'body' was not defined" unless o.body
         return "content size was invalid" unless JSON.stringify o.body is o.size
         return
-    @socket  = io.connect "#{@__options.protocol}://#{@__options.host}:#{@__options.port}/".replace /\:+$/, ''
+    opts =
+      multiplex: true
+      reconnection: true
+      reconnectionDelay: 1000
+      reconnectionDelayMax: 5000
+      timeout: 20000
+    _.extend opts, _.pick( @__options, _.keys opts )
+    @socket = io "#{@__addr}", opts
     .on 'ws:datagram', (data)=>
       data.header.rcvTime = Date.now()
       (dM = new validationModel).set data
       stream.add dM.attributes if dM.isValid() and (stream = @__streamHandlers[dM.attributes.header.type])?
     .on 'connect', =>
       WebSock.SockData.__connection__ = @
-      @trigger 'connected', @
+      @trigger 'connect', @
     .on 'disconnect', =>
-      @trigger 'disconnected'
+      @trigger 'disconnect'
+    .on 'reconnect', =>
+      @trigger 'reconnect'
+    .on 'reconnecting', =>
+      @trigger 'reconnecting', @
+    .on 'reconnect_attempt', =>
+      @trigger 'reconnect_attempt', @
+    .on 'reconnect_error', =>
+      @trigger 'reconnect_error', @
+    .on 'reconnect_failed', =>
+      @trigger 'reconnect_failed', @
+    .on 'error', =>
+      @trigger 'error', @
     @
   addStream:(name,clazz)->
     return s if (s = @__streamHandlers[name])?
@@ -154,8 +169,10 @@ class WebSock.StreamCollection extends Backbone.Collection
   initialize:->
     _client = arguments[0] if arguments[0] instanceof WebSock.Client
 if module?.exports?.WebSock?
-  module.exports.init = (io)->
+  module.exports.init = (io, listeners=[])->
     io.sockets.on 'connect', (client)=>
+      for listener in listeners
+        client.on listener, listeners[listener] 
       client.on 'ws:datagram', (data)->
         data.header.srvTime   = Date.now()
         data.header.sender_id = client.id

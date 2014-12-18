@@ -26,33 +26,23 @@ Fun.getConstructorName = function(fun) {
   return fun.constructor.name || ((name = this.getFunctionName(fun.constructor)) != null ? name : null);
 };
 
-WebSock = global.WebSock != null ? global.WebSock : global.WebSock = {
-  CHAT_PROTO: 'http',
-  CHAT_ADDR: '0.0.0.0',
-  CHAT_PORT: 3000
-};
+WebSock = global.WebSock != null ? global.WebSock : global.WebSock = {};
 
 WebSock.Client = (function() {
-  Client.prototype.__options = {};
-
   Client.prototype.__streamHandlers = {};
 
-  function Client(opts) {
-    if (opts == null) {
-      opts = {};
-    }
+  function Client(__addr, __options) {
+    this.__addr = __addr;
+    this.__options = __options != null ? __options : {};
     _.extend(this, Backbone.Events);
     this.model = WebSock.SockData;
-    this.__options.protocol = opts.protocol || WebSock.PROTOCOL || 'http';
-    this.__options.host = opts.host || WebSock.HOST || '0.0.0.0';
-    this.__options.port = opts.port || WebSock.PORT || '3000';
     if (!((this.__options.auto_connect != null) && this.__options.auto_connect === false)) {
       this.connect();
     }
   }
 
   Client.prototype.connect = function() {
-    var validationModel;
+    var opts, validationModel;
     validationModel = Backbone.Model.extend({
       defaults: {
         header: {
@@ -103,7 +93,15 @@ WebSock.Client = (function() {
         }
       }
     });
-    this.socket = io.connect(("" + this.__options.protocol + "://" + this.__options.host + ":" + this.__options.port + "/").replace(/\:+$/, '')).on('ws:datagram', (function(_this) {
+    opts = {
+      multiplex: true,
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000
+    };
+    _.extend(opts, _.pick(this.__options, _.keys(opts)));
+    this.socket = io("" + this.__addr, opts).on('ws:datagram', (function(_this) {
       return function(data) {
         var dM, stream;
         data.header.rcvTime = Date.now();
@@ -115,11 +113,35 @@ WebSock.Client = (function() {
     })(this)).on('connect', (function(_this) {
       return function() {
         WebSock.SockData.__connection__ = _this;
-        return _this.trigger('connected', _this);
+        return _this.trigger('connect', _this);
       };
     })(this)).on('disconnect', (function(_this) {
       return function() {
-        return _this.trigger('disconnected');
+        return _this.trigger('disconnect');
+      };
+    })(this)).on('reconnect', (function(_this) {
+      return function() {
+        return _this.trigger('reconnect');
+      };
+    })(this)).on('reconnecting', (function(_this) {
+      return function() {
+        return _this.trigger('reconnecting', _this);
+      };
+    })(this)).on('reconnect_attempt', (function(_this) {
+      return function() {
+        return _this.trigger('reconnect_attempt', _this);
+      };
+    })(this)).on('reconnect_error', (function(_this) {
+      return function() {
+        return _this.trigger('reconnect_error', _this);
+      };
+    })(this)).on('reconnect_failed', (function(_this) {
+      return function() {
+        return _this.trigger('reconnect_failed', _this);
+      };
+    })(this)).on('error', (function(_this) {
+      return function() {
+        return _this.trigger('error', _this);
       };
     })(this));
     return this;
@@ -400,9 +422,17 @@ WebSock.StreamCollection = (function(_super) {
 })(Backbone.Collection);
 
 if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) != null ? _ref.WebSock : void 0 : void 0) != null) {
-  module.exports.init = function(io) {
+  module.exports.init = function(io, listeners) {
+    if (listeners == null) {
+      listeners = [];
+    }
     return io.sockets.on('connect', (function(_this) {
       return function(client) {
+        var listener, _i, _len;
+        for (_i = 0, _len = listeners.length; _i < _len; _i++) {
+          listener = listeners[_i];
+          client.on(listener, listeners[listener]);
+        }
         return client.on('ws:datagram', function(data) {
           data.header.srvTime = Date.now();
           data.header.sender_id = client.id;
