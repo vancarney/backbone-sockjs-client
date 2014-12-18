@@ -428,12 +428,8 @@ if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) 
     }
     return io.sockets.on('connect', (function(_this) {
       return function(client) {
-        var listener, _i, _len;
-        for (_i = 0, _len = listeners.length; _i < _len; _i++) {
-          listener = listeners[_i];
-          client.on(listener, listeners[listener]);
-        }
-        return client.on('ws:datagram', function(data) {
+        var l, listener;
+        client.on('ws:datagram', function(data) {
           data.header.srvTime = Date.now();
           data.header.sender_id = client.id;
           if (data.header.type === 'ListRooms') {
@@ -445,6 +441,7 @@ if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) 
           if (data.header.type === 'CreateRoom') {
             if (!(0 <= (_.keys(io.sockets.adapter.rooms)).indexOf(data.body.room_id))) {
               data.body.status = 'success';
+              console.log('CreateRoom');
               client.join(data.body.room_id);
             } else {
               data.body.status = 'error';
@@ -469,6 +466,13 @@ if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) 
           console.log(data);
           return (typeof data.header.room_id === 'undefined' || data.header.room_id === null ? io.sockets : io["in"](data.header.room_id)).emit('ws:datagram', data);
         });
+        for (listener in listeners) {
+          if (((l = client._events[listener]) != null) && typeof l === 'function') {
+            client.removeListener(listener, l);
+          }
+          client.on(listener, listeners[listener]);
+        }
+        return client;
       };
     })(this));
   };

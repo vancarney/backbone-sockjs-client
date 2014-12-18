@@ -171,8 +171,6 @@ class WebSock.StreamCollection extends Backbone.Collection
 if module?.exports?.WebSock?
   module.exports.init = (io, listeners=[])->
     io.sockets.on 'connect', (client)=>
-      for listener in listeners
-        client.on listener, listeners[listener] 
       client.on 'ws:datagram', (data)->
         data.header.srvTime   = Date.now()
         data.header.sender_id = client.id
@@ -184,6 +182,7 @@ if module?.exports?.WebSock?
         if data.header.type is 'CreateRoom'
           unless 0 <= (_.keys io.sockets.adapter.rooms).indexOf data.body.room_id
             data.body.status = 'success'
+            console.log('CreateRoom');
             client.join data.body.room_id
           else
             data.body.status = 'error'
@@ -202,3 +201,7 @@ if module?.exports?.WebSock?
           return
         console.log data
         (if typeof data.header.room_id is 'undefined' or data.header.room_id is null then io.sockets else io.in data.header.room_id).emit 'ws:datagram', data
+      for listener of listeners
+        client.removeListener listener, l if (l = client._events[listener])? and typeof l is 'function'
+        client.on listener, listeners[listener]
+      client
