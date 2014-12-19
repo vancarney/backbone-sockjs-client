@@ -195,7 +195,7 @@ WebSock.SockData = (function(_super) {
     }
     m = {};
     if (opt.header != null) {
-      _.extend(this.header(opt.header));
+      _.extend(this.header, opt.header);
     }
     if (mtd === 'create') {
       if ((_base = this.header).type == null) {

@@ -89,7 +89,7 @@ class WebSock.SockData extends Backbone.Model
     SockData.__super__.initialize.call @, attributes, options
   sync: (mtd, mdl, opt={}) ->
     m = {}
-    _.extend @header opt.header if opt.header?
+    _.extend @header, opt.header if opt.header?
     # Create-operations get routed to Socket.io
     if mtd == 'create'
       # apply Class Name as type if not set by user
