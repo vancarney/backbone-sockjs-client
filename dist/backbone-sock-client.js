@@ -269,7 +269,14 @@ WebSock.RoomMessage = (function(_super) {
   }
 
   RoomMessage.prototype.defaults = {
-    text: ""
+    room_id: null,
+    status: "pending"
+  };
+
+  RoomMessage.prototype.validate = function(o) {
+    if (!((o.room_id != null) || this.attributes.room_id)) {
+      return "parameter 'room_id' must be set";
+    }
   };
 
   RoomMessage.prototype.initialize = function(attrs, options) {
@@ -277,8 +284,9 @@ WebSock.RoomMessage = (function(_super) {
       options = {};
     }
     if (options.room_id != null) {
-      return this.header.room_id = options.room_id;
+      this.header.room_id = options.room_id;
     }
+    return RoomMessage.__super__.initialize.apply(this, arguments);
   };
 
   return RoomMessage;
@@ -292,14 +300,9 @@ WebSock.CreateRoom = (function(_super) {
     return CreateRoom.__super__.constructor.apply(this, arguments);
   }
 
-  CreateRoom.prototype.defaults = {
-    room_id: null,
-    status: "pending"
-  };
-
   return CreateRoom;
 
-})(WebSock.SockData);
+})(WebSock.RoomMessage);
 
 WebSock.ListRooms = (function(_super) {
   __extends(ListRooms, _super);
@@ -323,11 +326,6 @@ WebSock.JoinRoom = (function(_super) {
     return JoinRoom.__super__.constructor.apply(this, arguments);
   }
 
-  JoinRoom.prototype.defaults = {
-    room_id: null,
-    status: "pending"
-  };
-
   JoinRoom.prototype.set = function(attrs, opts) {
     if (attrs.room_id != null) {
       this.header.room_id = attrs.room_id;
@@ -340,24 +338,9 @@ WebSock.JoinRoom = (function(_super) {
     return JoinRoom.__super__.sync.call(this, mtd, mdl, opts);
   };
 
-  JoinRoom.prototype.validate = function(o) {
-    if (!((o.room_id != null) || this.attributes.room_id)) {
-      return "parameter 'room_id' must be set";
-    }
-  };
-
-  JoinRoom.prototype.initialize = function(attrs, options) {
-    if (options == null) {
-      options = {};
-    }
-    if (options.room_id != null) {
-      return this.header.room_id = options.room_id;
-    }
-  };
-
   return JoinRoom;
 
-})(WebSock.SockData);
+})(WebSock.RoomMessage);
 
 WebSock.LeaveRoom = (function(_super) {
   __extends(LeaveRoom, _super);
@@ -368,7 +351,7 @@ WebSock.LeaveRoom = (function(_super) {
 
   return LeaveRoom;
 
-})(WebSock.JoinRoom);
+})(WebSock.RoomMessage);
 
 WebSock.StreamCollection = (function(_super) {
   __extends(StreamCollection, _super);

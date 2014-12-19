@@ -119,20 +119,18 @@ class WebSock.Message extends WebSock.SockData
     text:""
 class WebSock.RoomMessage extends WebSock.SockData
   defaults:
-    text:""
-  initialize:(attrs,options={})->
-    @header.room_id = options.room_id if options.room_id?
-class WebSock.CreateRoom extends WebSock.SockData
-  defaults:
     room_id:null
     status:"pending"
+  validate:(o)->
+    return "parameter 'room_id' must be set" unless o.room_id? or @attributes.room_id
+  initialize:(attrs,options={})->
+    @header.room_id = options.room_id if options.room_id?
+    RoomMessage.__super__.initialize.apply @, arguments
+class WebSock.CreateRoom extends WebSock.RoomMessage
 class WebSock.ListRooms extends WebSock.SockData
   defaults:
     rooms:[]
-class WebSock.JoinRoom extends WebSock.SockData
-  defaults:
-    room_id:null
-    status:"pending"
+class WebSock.JoinRoom extends WebSock.RoomMessage
   set:(attrs,opts)->
     if attrs.room_id?
       @header.room_id = attrs.room_id
@@ -140,11 +138,7 @@ class WebSock.JoinRoom extends WebSock.SockData
   sync:(mtd,mdl,opts)->
     delete mdl.body
     JoinRoom.__super__.sync.call @, mtd, mdl, opts
-  validate:(o)->
-    return "parameter 'room_id' must be set" unless o.room_id? or @attributes.room_id
-  initialize:(attrs,options={})->
-    @header.room_id = options.room_id if options.room_id?
-class WebSock.LeaveRoom extends WebSock.JoinRoom
+class WebSock.LeaveRoom extends WebSock.RoomMessage
 class WebSock.StreamCollection extends Backbone.Collection
   model:WebSock.SockData
   fetch:->
