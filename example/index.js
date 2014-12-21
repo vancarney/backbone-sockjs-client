@@ -1,14 +1,15 @@
-var fs = require('fs');
-var staticPath = require('serve-static');
-var express = require('express');
-var http = require('http');
-var app = express(), 
-host = process.env.HOST || '0.0.0.0',
-port = process.env.PORT || 3000,
-server = require('http').createServer(app),
-websock = require('../dist/backbone-sock-client');
-websock.init( require('socket.io').listen( server ) );
-
+var fs = require('fs')
+,staticPath = require('serve-static')
+,express = require('express')
+,http = require('http')
+.sockjs = require('sockjs')
+,app = express()
+,host = process.env.HOST || '0.0.0.0'
+,port = process.env.PORT || 3000
+,server = require('http').createServer(app)
+,sockjs = require('sockjs').createServer({ sockjs_url: 'http://cdn.jsdelivr.net/sockjs/0.3.4/sockjs.min.js' })
+,websock = require('../dist/backbone-sock-client').init( sockjs );
+sockjs.installHandlers(server, {prefix:'/ws'});
 server.listen(port);
 
 app.use( staticPath('dist') );

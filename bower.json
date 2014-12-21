@@ -1,5 +1,5 @@
 {
-  "name": "backbone-sock-client",
+  "name": "backbone-sockjs-client",
   "version": "0.0.1-alpha",
   "main": "public/css/app.css",
   "ignore": [

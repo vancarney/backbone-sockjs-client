@@ -50,28 +50,13 @@ class WebSock.Client
       reconnectionDelayMax: 5000
       timeout: 20000
     _.extend opts, _.pick( @__options, _.keys opts )
-    @socket = io "#{@__addr}", opts
-    .on 'ws:datagram', (data)=>
-      data.header.rcvTime = Date.now()
-      (dM = new validationModel).set data
-      stream.add dM.attributes if dM.isValid() and (stream = @__streamHandlers[dM.attributes.header.type])?
-    .on 'connect', =>
+    @socket = new SockJS "#{@__addr}" #, opts
+    @socket.onopen = =>
       WebSock.SockData.__connection__ = @
-      @trigger 'connect', @
-    .on 'disconnect', =>
-      @trigger 'disconnect'
-    .on 'reconnect', =>
-      @trigger 'reconnect'
-    .on 'reconnecting', =>
-      @trigger 'reconnecting', @
-    .on 'reconnect_attempt', =>
-      @trigger 'reconnect_attempt', @
-    .on 'reconnect_error', =>
-      @trigger 'reconnect_error', @
-    .on 'reconnect_failed', =>
-      @trigger 'reconnect_failed', @
-    .on 'error', =>
-      @trigger 'error', @
+      @trigger 'connected'
+    @socket.onclose = (=> @trigger 'disconnected')
+    @socket.onmessage = (msg)=>
+      console.log arguments
     @
   addStream:(name,clazz)->
     return s if (s = @__streamHandlers[name])?
@@ -96,7 +81,7 @@ class WebSock.SockData extends Backbone.Model
       @header.type ?= @__type
       m.header  = _.extend @header, sntTime: Date.now()
       m.body    = mdl.attributes
-      SockData.__connection__.socket.emit 'ws:datagram', m
+      SockData.__connection__.socket.send JSON.stringify m
   getSenderId:->
     @header.sender_id || null
   getSentTime:->
@@ -112,6 +97,7 @@ class WebSock.SockData extends Backbone.Model
   getRoomId:->
     @header.room_id
   parse: (data)->
+    data = (JSON.parse.data).data
     @header = Object.freeze data.header
     SockData.__super__.parse.call data.body
 class WebSock.Message extends WebSock.SockData
@@ -154,46 +140,22 @@ class WebSock.StreamCollection extends Backbone.Collection
     options = if options then _.clone options else {}
     options.collection = @
     model = new @model attrs.body, options
-    model.header = Object.freeze attrs.header
+    model.header = if attrs.header? then Object.freeze attrs.header else {}
     return model unless model.validationError
     @trigger 'invalid', @, model.validationError, options
     false
-  send:(data)->
-    @create data
+  send:(attrs,opts)->
+    @create attrs, opts
   initialize:->
     _client = arguments[0] if arguments[0] instanceof WebSock.Client
 if module?.exports?.WebSock?
-  module.exports.init = (io, listeners=[])->
-    io.sockets.on 'connect', (client)=>
-      client.on 'ws:datagram', (data)->
-        data.header.srvTime   = Date.now()
+  module.exports.init = (sock, listeners=[])->
+    sock.on 'connection', (client)=>
+      client.on 'data', (data)->
+        data = JSON.parse data
+        data.header.srvTime = Date.now()
         data.header.sender_id = client.id
-        if data.header.type is 'ListRooms'
-          data.body.status = 'success'
-          data.body.rooms = _.keys io.sockets.adapter.rooms
-          client.emit 'ws:datagram', data
-          return
-        if data.header.type is 'CreateRoom'
-          unless 0 <= (_.keys io.sockets.adapter.rooms).indexOf data.body.room_id
-            data.body.status = 'success'
-            client.join data.body.room_id
-          else
-            data.body.status = 'error'
-          client.emit 'ws:datagram', data
-          return
-        if data.header.type is 'JoinRoom'
-          if data.body.room_id
-            client.join data.body.room_id
-            data.body.status = 'success'
-            client.emit 'ws:datagram', data
-          return
-        if data.header.type is 'LeaveRoom'
-          client.leave data.header.room_id
-          data.body.status = 'success'
-          client.emit 'ws:datagram', data
-          return
-        console.log data
-        (if typeof data.header.room_id is 'undefined' or data.header.room_id is null then io.sockets else io.in data.header.room_id).emit 'ws:datagram', data
+        client.write JSON.stringify data
       for listener of listeners
         client.removeListener listener, l if (l = client._events[listener])? and typeof l is 'function'
         client.on listener, listeners[listener]

@@ -40,19 +40,25 @@
 		<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/underscore.js/1.7.0/underscore-min.js"></script>
 		<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/backbone.js/1.1.2/backbone-min.js"></script>
 		<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/foundation/5.4.7/js/foundation.min.js"></script>
-		<script type="text/javascript" src="socket.io/socket.io.js"></script>
+		<script type="text/javascript" src="//cdn.jsdelivr.net/sockjs/0.3.4/sockjs.min.js"></script>
 		<script type="text/javascript" src="backbone-sock-client.js"></script>
 		
 		<script type="text/javascript">
 			$(document).ready(function() {
-				window.client = (new WebSock.Client)
+				window.client = (new WebSock.Client( 'http://0.0.0.0:3000/ws' ))
 				.on( 'connected', function(evt) {
+					console.log('connected');
 					stream = new WebSock.StreamCollection;
 					stream.on('add', function() {
+						console.log("got add..");
 						console.log(arguments);
+					})
+					.on('invalid', function(e) {
+						console.log(e);
 					});
-					client.addStream('memo',stream);
+					client.addStream('Message',stream);
 					$('.button').removeClass('disabled').on('click', function(evt) {
+						evt.preventDefault();
 						var memo;
 						if ((memo = $('input[name=memo]').val()) == null || !memo.length) return;
 						stream.send( {text:memo} );

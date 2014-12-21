@@ -101,49 +101,23 @@ WebSock.Client = (function() {
       timeout: 20000
     };
     _.extend(opts, _.pick(this.__options, _.keys(opts)));
-    this.socket = io("" + this.__addr, opts).on('ws:datagram', (function(_this) {
-      return function(data) {
-        var dM, stream;
-        data.header.rcvTime = Date.now();
-        (dM = new validationModel).set(data);
-        if (dM.isValid() && ((stream = _this.__streamHandlers[dM.attributes.header.type]) != null)) {
-          return stream.add(dM.attributes);
-        }
-      };
-    })(this)).on('connect', (function(_this) {
+    this.socket = new SockJS("" + this.__addr);
+    this.socket.onopen = (function(_this) {
       return function() {
         WebSock.SockData.__connection__ = _this;
-        return _this.trigger('connect', _this);
+        return _this.trigger('connected');
       };
-    })(this)).on('disconnect', (function(_this) {
+    })(this);
+    this.socket.onclose = ((function(_this) {
       return function() {
-        return _this.trigger('disconnect');
-      };
-    })(this)).on('reconnect', (function(_this) {
-      return function() {
-        return _this.trigger('reconnect');
-      };
-    })(this)).on('reconnecting', (function(_this) {
-      return function() {
-        return _this.trigger('reconnecting', _this);
-      };
-    })(this)).on('reconnect_attempt', (function(_this) {
-      return function() {
-        return _this.trigger('reconnect_attempt', _this);
-      };
-    })(this)).on('reconnect_error', (function(_this) {
-      return function() {
-        return _this.trigger('reconnect_error', _this);
-      };
-    })(this)).on('reconnect_failed', (function(_this) {
-      return function() {
-        return _this.trigger('reconnect_failed', _this);
-      };
-    })(this)).on('error', (function(_this) {
-      return function() {
-        return _this.trigger('error', _this);
+        return _this.trigger('disconnected');
       };
     })(this));
+    this.socket.onmessage = (function(_this) {
+      return function(msg) {
+        return console.log(arguments);
+      };
+    })(this);
     return this;
   };
 
@@ -205,7 +179,7 @@ WebSock.SockData = (function(_super) {
         sntTime: Date.now()
       });
       m.body = mdl.attributes;
-      return SockData.__connection__.socket.emit('ws:datagram', m);
+      return SockData.__connection__.socket.send(JSON.stringify(m));
     }
   };
 
@@ -238,6 +212,7 @@ WebSock.SockData = (function(_super) {
   };
 
   SockData.prototype.parse = function(data) {
+    data = JSON.parse.data.data;
     this.header = Object.freeze(data.header);
     return SockData.__super__.parse.call(data.body);
   };
@@ -381,7 +356,7 @@ WebSock.StreamCollection = (function(_super) {
     options = options ? _.clone(options) : {};
     options.collection = this;
     model = new this.model(attrs.body, options);
-    model.header = Object.freeze(attrs.header);
+    model.header = attrs.header != null ? Object.freeze(attrs.header) : {};
     if (!model.validationError) {
       return model;
     }
@@ -389,8 +364,8 @@ WebSock.StreamCollection = (function(_super) {
     return false;
   };
 
-  StreamCollection.prototype.send = function(data) {
-    return this.create(data);
+  StreamCollection.prototype.send = function(attrs, opts) {
+    return this.create(attrs, opts);
   };
 
   StreamCollection.prototype.initialize = function() {
@@ -405,48 +380,18 @@ WebSock.StreamCollection = (function(_super) {
 })(Backbone.Collection);
 
 if ((typeof module !== "undefined" && module !== null ? (_ref = module.exports) != null ? _ref.WebSock : void 0 : void 0) != null) {
-  module.exports.init = function(io, listeners) {
+  module.exports.init = function(sock, listeners) {
     if (listeners == null) {
       listeners = [];
     }
-    return io.sockets.on('connect', (function(_this) {
+    return sock.on('connection', (function(_this) {
       return function(client) {
         var l, listener;
-        client.on('ws:datagram', function(data) {
+        client.on('data', function(data) {
+          data = JSON.parse(data);
           data.header.srvTime = Date.now();
           data.header.sender_id = client.id;
-          if (data.header.type === 'ListRooms') {
-            data.body.status = 'success';
-            data.body.rooms = _.keys(io.sockets.adapter.rooms);
-            client.emit('ws:datagram', data);
-            return;
-          }
-          if (data.header.type === 'CreateRoom') {
-            if (!(0 <= (_.keys(io.sockets.adapter.rooms)).indexOf(data.body.room_id))) {
-              data.body.status = 'success';
-              client.join(data.body.room_id);
-            } else {
-              data.body.status = 'error';
-            }
-            client.emit('ws:datagram', data);
-            return;
-          }
-          if (data.header.type === 'JoinRoom') {
-            if (data.body.room_id) {
-              client.join(data.body.room_id);
-              data.body.status = 'success';
-              client.emit('ws:datagram', data);
-            }
-            return;
-          }
-          if (data.header.type === 'LeaveRoom') {
-            client.leave(data.header.room_id);
-            data.body.status = 'success';
-            client.emit('ws:datagram', data);
-            return;
-          }
-          console.log(data);
-          return (typeof data.header.room_id === 'undefined' || data.header.room_id === null ? io.sockets : io["in"](data.header.room_id)).emit('ws:datagram', data);
+          return client.write(JSON.stringify(data));
         });
         for (listener in listeners) {
           if (((l = client._events[listener]) != null) && typeof l === 'function') {
