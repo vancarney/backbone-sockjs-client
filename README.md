@@ -1,4 +1,4 @@
-backbone-sock-client
+backbone-sockjs-client
 ====================
 
-Backbone Socket.io Client
+Backbone SockJS Client
